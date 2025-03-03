@@ -1,24 +1,49 @@
-// server.js
-const express = require("express");
+require("dotenv").config(); // Ladda miljövariablerna
 const cors = require("cors");
-const dotenv = require("dotenv");
-const deleteImageRoute = require("./api/deleteImage"); // Importera din deleteImage-router
 
-dotenv.config(); // Ladda miljövariabler från .env
+const express = require("express");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 5001; // Använd port från .env eller 5000 som standard
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Ersätt med din React-apps port om den är annorlunda
+  })
+);
 
-// Aktivera CORS
-app.use(cors());
+// Konfigurera Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// Middleware för att kunna läsa JSON-data från kroppen
+// Middleware för att hantera JSON-data i förfrågningar
 app.use(express.json());
 
-// Använd deleteImageRoute för API:et som hanterar borttagning av bilder
-app.use("/api", deleteImageRoute); // Prefixa alla rutter i deleteImageRoute med "/api"
+// Endpoint för att radera alla bilder
+app.delete("/radera-alla-bilder", async (req, res) => {
+  try {
+    const { resources } = await cloudinary.search
+      .expression("resource_type:image") // Hämta alla bilder
+      .execute();
 
-// Starta servern
+    const publicIds = resources.map((resource) => resource.public_id);
+
+    if (publicIds.length > 0) {
+      await cloudinary.api.delete_resources(publicIds, {
+        type: "upload", // Viktigt: Ange typen av resurs
+      });
+    }
+
+    res.json({ message: "Alla bilder raderade." });
+  } catch (error) {
+    console.error("Fel vid radering:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Servern lyssnar på port ${port}`);
 });

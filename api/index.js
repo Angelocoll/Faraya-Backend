@@ -17,15 +17,22 @@ cloudinary.config({
 // Endpoint för att radera alla bilder
 app.delete("/radera-alla-bilder", async (req, res) => {
   try {
+    console.log("Raderingsförfrågan mottagen!");
+
     const { resources } = await cloudinary.search
       .expression("resource_type:image")
       .execute();
 
-    const publicIds = resources.map((resource) => resource.public_id);
+    console.log("Hämtade resurser:", resources.length);
 
-    if (publicIds.length > 0) {
-      await cloudinary.api.delete_resources(publicIds, { type: "upload" });
+    if (resources.length === 0) {
+      return res.json({ message: "Inga bilder att radera." });
     }
+
+    const publicIds = resources.map((resource) => resource.public_id);
+    console.log("Public IDs att radera:", publicIds);
+
+    await cloudinary.api.delete_resources(publicIds, { type: "upload" });
 
     res.json({ message: "Alla bilder raderade." });
   } catch (error) {
